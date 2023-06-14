@@ -27,4 +27,9 @@ public class TetroPieceController : MonoBehaviour
         {
                 return gameController.GridCheck(currentPosition + direction) == 0;
         }
+
+        public bool CheckRotation(Vector2 nextPosition)
+        {
+                return gameController.GridCheck(nextPosition) == 0;
+        }
 }

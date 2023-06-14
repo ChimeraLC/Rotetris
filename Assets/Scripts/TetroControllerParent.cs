@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class TetroControllerParent : MonoBehaviour
@@ -35,6 +36,7 @@ public class TetroControllerParent : MonoBehaviour
         {
                 if (state == 1)
                 {
+                        // Left + Right movement
                         if (Input.GetKeyDown(KeyCode.D))
                         {
                                 if (CheckDirection(Vector2.right))
@@ -51,12 +53,30 @@ public class TetroControllerParent : MonoBehaviour
                                         position += Vector2.left;
                                 }
                         }
+
+                        // Downward movememt
                         if (Input.GetKeyDown(KeyCode.S))
                         {
                                 if (CheckDirection(Vector2.down))
                                 {
                                         transform.position += new Vector3(0, -0.5f);
                                         position += Vector2.down;
+                                }
+                        }
+
+                        // Rotation
+                        if (CheckRotation(new Vector2(1, -1))) 
+                        {
+                                if (Input.GetKeyDown(KeyCode.Q)) 
+                                {
+                                        RotateLeft();
+                                }
+                        }
+                        if (CheckRotation(new Vector2(-1, 1)))
+                        {
+                                if (Input.GetKeyDown(KeyCode.E))
+                                {
+                                        RotateRight();
                                 }
                         }
                 }
@@ -71,12 +91,54 @@ public class TetroControllerParent : MonoBehaviour
                 }
                 return valid;
         }
+        bool CheckRotation(Vector2 direction) {
+                bool valid = true;
+                foreach (TetroPieceController piece in pieces)
+                {
+                        if (!piece.CheckRotation(position + 
+                            new Vector2(piece.offset.y * direction.x, piece.offset.x * direction.y)))
+                        {
+                                valid = false;
+                        }
+                }
+                return valid;
+        }
         // Calculations called every game tick
         public void Tick() {
-                if (CheckDirection(Vector2.down))
+                if (state == 1)
                 {
-                        transform.position += new Vector3(0, -0.5f);
-                        position += Vector2.down;
+                        if (CheckDirection(Vector2.down))
+                        {
+                                transform.position += new Vector3(0, -0.5f);
+                                position += Vector2.down;
+                        }
+                        // Reached the bottom TODO: add some leeway here
+                        else
+                        {
+                                state = 0;
+                                gameController.SignalDropped();
+                                foreach (TetroPieceController piece in pieces)
+                                {
+                                        gameController.GridSet(position + piece.offset, 1);
+                                }
+                        }
+                }
+        }
+        // Rotation methods TODO: perform checks
+        public void RotateRight() {
+                foreach (TetroPieceController piece in pieces)
+                {
+                        piece.offset = new Vector2(piece.offset.y, -piece.offset.x);
+                        piece.transform.position = transform.position + (Vector3) piece.offset / 2;
+                }        
+        }
+
+        public void RotateLeft()
+        {
+                foreach (TetroPieceController piece in pieces)
+                {
+                        piece.offset = new Vector2(-piece.offset.y, piece.offset.x);
+                        piece.transform.position = transform.position + (Vector3)piece.offset / 2;
                 }
         }
 }
