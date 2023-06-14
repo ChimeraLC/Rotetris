@@ -14,7 +14,6 @@ public class TetroPieceController : MonoBehaviour
         // Start is called before the first frame update
         void Start()
         {
-        
         }
 
         // Update is called once per frame
@@ -31,5 +30,9 @@ public class TetroPieceController : MonoBehaviour
         public bool CheckRotation(Vector2 nextPosition)
         {
                 return gameController.GridCheck(nextPosition) == 0;
+        }
+
+        public void SetColor(Color newColor) { 
+                GetComponent<SpriteRenderer>().color = newColor;
         }
 }

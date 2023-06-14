@@ -8,6 +8,7 @@ public class TetroControllerParent : MonoBehaviour
         public GameController gameController;
         public GameObject piecePrefab;
         private List<TetroPieceController> pieces = new List<TetroPieceController>();
+        private Color currentColor;
         public int state
         {
                 get; set;
@@ -32,6 +33,7 @@ public class TetroControllerParent : MonoBehaviour
                         newPiece.transform.SetParent(transform);
                         newPiece.gameController = gameController;
                         newPiece.offset = piecePos;
+                        newPiece.SetColor(currentColor);
                         pieces.Add(newPiece);
                 }
         }
@@ -39,52 +41,56 @@ public class TetroControllerParent : MonoBehaviour
         // Update is called once per frame
         void Update()
         {
-                if (state == 1)
+        }
+        // Trys to move in the given direction
+        public void TryMove(Vector2 direction) {
+                if (CheckDirection(direction)) {
+                        transform.position += (Vector3) direction / 2;
+                        position += direction;
+                }
+        }
+        // Specifically moves down, returns true if at the bottom
+        public bool TryMoveDown() {
+                if (CheckDirection(Vector2.down))
                 {
-                        // Left + Right movement
-                        if (Input.GetKeyDown(KeyCode.D))
+                        transform.position += new Vector3(0, -0.5f);
+                        position += Vector2.down;
+                        return false;
+                }
+                // Reached the bottom TODO: add some leeway here
+                else
+                {
+                        foreach (TetroPieceController piece in pieces)
                         {
-                                if (CheckDirection(Vector2.right))
-                                {
-                                        transform.position += new Vector3(0.5f, 0);
-                                        position += Vector2.right;
-                                }
-                        }
-                        if (Input.GetKeyDown(KeyCode.A))
-                        {
-                                if (CheckDirection(Vector2.left))
-                                {
-                                        transform.position += new Vector3(-0.5f, 0);
-                                        position += Vector2.left;
-                                }
+                                gameController.GridSet(position + piece.offset, piece);
                         }
 
-                        // Downward movememt
-                        if (Input.GetKey(KeyCode.S))
-                        {
-                                if (CheckDirection(Vector2.down))
-                                {
-                                        transform.position += new Vector3(0, -0.5f);
-                                        position += Vector2.down;
-                                }
-                        }
+                        return true;
+                }
+        }
+        // Trys to rotate the piece in the given direction (1 -> right, -1 -> left)
+        public void TryRotation(int direction) {
 
-                        // Rotation
-                        if (CheckRotation(new Vector2(1, -1))) 
+                if (CheckRotation(new Vector2(-1 * direction, 1 * direction))) {
+                        if (direction == 1)
                         {
-                                if (Input.GetKeyDown(KeyCode.Q)) 
-                                {
-                                        RotateLeft();
-                                }
+                                RotateRight();
                         }
-                        if (CheckRotation(new Vector2(-1, 1)))
-                        {
-                                if (Input.GetKeyDown(KeyCode.E))
-                                {
-                                        RotateRight();
-                                }
+                        else {
+                                RotateLeft();
                         }
                 }
+        }
+        // Checks that the given piece is not within the 10x10 rotation grid
+        public bool CheckBox() {
+                bool valid = true;
+                foreach (TetroPieceController piece in pieces) {
+                        Vector2 loc = position + piece.offset;
+                        if (loc.x >= 0 && loc.x <= 9 && loc.y >= 0 && loc.y <= 9) {
+                                valid = false;
+                        }
+                }
+                return valid;
         }
         // Checks if the tetris piece can move in the given direction
         bool CheckDirection(Vector2 direction) {
@@ -110,24 +116,7 @@ public class TetroControllerParent : MonoBehaviour
         }
         // Calculations called every game tick
         public void Tick() {
-                if (state == 1)
-                {
-                        if (CheckDirection(Vector2.down))
-                        {
-                                transform.position += new Vector3(0, -0.5f);
-                                position += Vector2.down;
-                        }
-                        // Reached the bottom TODO: add some leeway here
-                        else
-                        {
-                                state = 0;
-                                gameController.SignalDropped();
-                                foreach (TetroPieceController piece in pieces)
-                                {
-                                        gameController.GridSet(position + piece.offset, 1);
-                                }
-                        }
-                }
+                
         }
         // Rotation methods TODO: perform checks
         public void RotateRight() {
@@ -145,5 +134,16 @@ public class TetroControllerParent : MonoBehaviour
                         piece.offset = new Vector2(-piece.offset.y, piece.offset.x);
                         piece.transform.position = transform.position + (Vector3)piece.offset / 2;
                 }
+        }
+
+        // Visual methods
+        public void SetColor(Color newColor) {
+                // Set each individual piece.
+                foreach (TetroPieceController piece in pieces)
+                {
+                        piece.SetColor(newColor);
+                }
+                // Also set any new pieces
+                currentColor = newColor;
         }
 }
