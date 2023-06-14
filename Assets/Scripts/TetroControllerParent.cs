@@ -17,6 +17,11 @@ public class TetroControllerParent : MonoBehaviour
         {
                 get; set;
         } = Vector2.zero;
+
+        public float rotation
+        {
+                get; set;
+        } = 0;
         // Start is called before the first frame update
         void Start()
         {
@@ -55,7 +60,7 @@ public class TetroControllerParent : MonoBehaviour
                         }
 
                         // Downward movememt
-                        if (Input.GetKeyDown(KeyCode.S))
+                        if (Input.GetKey(KeyCode.S))
                         {
                                 if (CheckDirection(Vector2.down))
                                 {
