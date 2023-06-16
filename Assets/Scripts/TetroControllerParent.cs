@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.VisualScripting;
+using UnityEditor;
 using UnityEngine;
 
 public class TetroControllerParent : MonoBehaviour
@@ -21,7 +22,7 @@ public class TetroControllerParent : MonoBehaviour
         public Vector2 position
         {
                 get; set;
-        } = Vector2.zero;
+        }
 
         public float rotation
         {
@@ -255,9 +256,9 @@ public class TetroControllerParent : MonoBehaviour
                         }
                 }
                 if (broken != 0) {
-                        Debug.Log("new");
                         // Create a new tetro
-                        TetroControllerParent newTetro = Instantiate(tetroPrefab, transform.position, Quaternion.identity).GetComponent<TetroControllerParent>();
+                        TetroControllerParent newTetro = gameController.CreateBlankTetro();
+                        newTetro.transform.position = transform.position;
                         newTetro.position = position;
                         // Add unconnected pieces
                         TetroPieceController[] offPieces = new TetroPieceController[broken];
@@ -266,6 +267,8 @@ public class TetroControllerParent : MonoBehaviour
                                 if (piece.marker != 1)
                                 {
                                         RemoveSquare(piece);
+                                        piece.transform.parent = newTetro.transform;
+                                        piece.parent = newTetro;
                                         offPieces[counter] = piece;
                                         counter++;
                                 }
@@ -273,7 +276,6 @@ public class TetroControllerParent : MonoBehaviour
                         newTetro.SoftInitiate(offPieces);
                         // Recursively check for breaks in the other tetro
                         newTetro.CheckBreaks();
-                        
                 }
         }
 }

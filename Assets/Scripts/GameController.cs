@@ -115,11 +115,26 @@ public class GameController : MonoBehaviour
                                         rotationProgress = 0;
                                 }
                         }
-                }
+                        // Rotation testing code
+                        if (Input.GetKeyDown(KeyCode.F))
+                        {
+                                if (currentTetro.CheckBox())
+                                {
+                                        // TODO check that no 'active pieces' in main zone.
 
+                                        state = 4;
+                                        rotationProgress = 0;
+                                }
+                        }
+                }
+                // TODO: clean up state values
                 if (state == 1)
                 {
                         RotateRight();
+                }
+                if (state == 4)
+                {
+                        RotateLeft();
                 }
                 // TODO: make this look better
                 if (state == 2)
@@ -144,12 +159,34 @@ public class GameController : MonoBehaviour
                         state = 3;
                         lifetime = 0;
                 }
+                if (state == 5)
+                {
+                        foreach (TetroControllerParent tetro in tetros)
+                        {
+                                if (tetro != currentTetro)
+                                {
+                                        float xOffset = tetro.position.x - 4.5f;
+                                        float yOffset = tetro.position.y - 4.5f;
+
+                                        // Calculate new position
+                                        tetro.position = new Vector2(-yOffset + 4.5f,
+                                            xOffset + 4.5f);
+
+                                        tetro.rotation = 0;
+                                        tetro.transform.eulerAngles = Vector3.forward * 0;
+                                        tetro.RotateLeft();
+                                }
+                        }
+                        RotateLeftGrid();
+                        state = 3;
+                        lifetime = 0;
+                }
                 // Calculating falls
                 if (state == 3) {
                         lifetime += Time.deltaTime;
-                        if (lifetime > 0.2)
+                        if (lifetime > 0.1)
                         {
-                                lifetime -= 0.2f;
+                                lifetime -= 0.1f;
 
                                 if (!DropPieces()) state = -1;
                         }
@@ -177,7 +214,7 @@ public class GameController : MonoBehaviour
                                 state = 3;
                                 // Check for breaks
                                 // TODO: make this more efficient for when there are many tetros
-                                foreach (TetroControllerParent tetro in tetros) {
+                                foreach (TetroControllerParent tetro in tetros.ToArray()) {
                                         if (tetro.marked)
                                         {
                                                 tetro.marked = false;
@@ -234,13 +271,18 @@ public class GameController : MonoBehaviour
                 TetroControllerParent newTetro = Instantiate(tetroPrefab, new Vector2(0.25f, 4.25f), Quaternion.identity).GetComponent<TetroControllerParent>();
                 newTetro.gameController = this;
                 tetros.Add(newTetro);
-                newTetro.state = 1;
                 newTetro.position = new Vector2(5, 18);
                 currentTetro = newTetro;
                 Vector2[] tempVectors = { Vector2.zero, Vector2.left, Vector2.right, Vector2.up };
                 newTetro.Initiate(tempVectors);
                 // Setting tetro color
                 currentTetro.SetColor(new Color(Random.Range(0.5f, 1), Random.Range(0.5f, 1), Random.Range(0.5f, 1), 1));
+        }
+        public TetroControllerParent CreateBlankTetro() {
+                TetroControllerParent newTetro = Instantiate(tetroPrefab).GetComponent<TetroControllerParent>();
+                newTetro.gameController = this;
+                tetros.Add(newTetro);
+                return newTetro;
         }
         // Function used to have already placed pieces fall, returns true any pieces fell
         private bool DropPieces()
@@ -305,7 +347,7 @@ public class GameController : MonoBehaviour
         // Functino used to rotate the grid right
         private void RotateRight() 
         {
-                rotationProgress += Time.deltaTime * 90;
+                rotationProgress += Time.deltaTime * 180;
                 if (rotationProgress > 90) {
                         rotationProgress = 90;
                         state = 2;
@@ -335,6 +377,41 @@ public class GameController : MonoBehaviour
 
         }
 
+        // Functino used to rotate the grid right
+        private void RotateLeft()
+        {
+                rotationProgress += Time.deltaTime * 180;
+                if (rotationProgress > 90)
+                {
+                        rotationProgress = 90;
+                        state = 5;
+                }
+                // Rotate each tetro
+                foreach (TetroControllerParent tetro in tetros)
+                {
+                        if (tetro != currentTetro)
+                        {
+                                float xOffset = tetro.position.x - 4.5f;
+                                float yOffset = tetro.position.y - 4.5f;
+
+                                // TODO: make these onetime calculations
+                                float magnitude = new Vector2(xOffset, yOffset).magnitude / 2;
+                                float ang = AccurateAtan(new Vector2(xOffset, yOffset));
+
+                                // Calculate new position
+                                tetro.transform.position = new Vector2(0, -2.5f) + magnitude *
+                                    new Vector2(Mathf.Cos((ang + rotationProgress) * Mathf.Deg2Rad),
+                                    Mathf.Sin((ang + rotationProgress) * Mathf.Deg2Rad));
+
+                                tetro.transform.eulerAngles = Vector3.forward * (tetro.rotation + rotationProgress);
+                        }
+                }
+
+                // Rotate square
+                lowerSquare.transform.eulerAngles = Vector3.forward * (rotationProgress);
+
+        }
+
         // Rotates the bottom 10x10 values in the grid rightward
         private void RotateRightGrid()
         {
@@ -355,7 +432,29 @@ public class GameController : MonoBehaviour
                 }
         }
 
-
+        // Rotates the bottom 10x10 values in the grid leftward
+        private void RotateLeftGrid()
+        {
+                TetroPieceController[,] tempGrid = new TetroPieceController[10, 10];
+                // Find the rotated grid
+                for (int i = 0; i < 10; i++)
+                {
+                        for (int j = 0; j < 10; j++)
+                        {
+                                float xOffset = i - 4.5f;
+                                float yOffset = j - 4.5f;
+                                tempGrid[(int)(-yOffset + 4.5f), (int)(xOffset + 4.5f)] = grid[i, j];
+                        }
+                }
+                // Copy these new values over
+                for (int i = 0; i < 10; i++)
+                {
+                        for (int j = 0; j < 10; j++)
+                        {
+                                grid[i, j] = tempGrid[i, j];
+                        }
+                }
+        }
 
 
         /*
