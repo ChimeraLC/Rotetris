@@ -1,9 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UIElements;
-
 public class GameController : MonoBehaviour
 {
         // Natural fall tickrate
@@ -14,7 +14,7 @@ public class GameController : MonoBehaviour
         //private float tickRateHeld = 0.1f;
         //private float lifetimeHeld = 0f;
 
-        // Game states (0 - playing, 1 - rotate, -1 game over)
+        // Game states (0 - playing, 1 - rotate, -1 check for line breaks, -2 loss)
         private float state = 0;
 
         // Rotation variables
@@ -28,14 +28,31 @@ public class GameController : MonoBehaviour
         // Tetris grid
         TetroPieceController[,] grid = new TetroPieceController[10, 25];
 
+        // Other UI Elements
+        public GameObject lowerSquare;
+
         void Start()
         {
                 CreateTetro();
+                lowerSquare = Instantiate(lowerSquare, new Vector2(0, -2.5f), Quaternion.identity);
         }
 
         // Update is called once per frame
         void Update()
         {
+                // Debug message
+                if (Input.GetKeyDown(KeyCode.O)) {
+                        Debug.Log(state);
+                        string aaa = "";
+                        for (int j = 9; j>=0; j--) {
+                                for (int i = 0; i < 10; i++) {
+                                        if (grid[i, j] == null) aaa += "0";
+                                        else aaa += "1";
+                                }
+                                aaa += "\n";
+                        }
+                        Debug.Log(aaa);
+                }
                 // Only tick and allow controls in the playing state
                 if (state == 0)
                 {
@@ -71,6 +88,7 @@ public class GameController : MonoBehaviour
                                 }
                                 lifetime = 0;
                                 SignalDropped();
+                                state = -1;
                         }
 
                         // Natural falling
@@ -78,7 +96,11 @@ public class GameController : MonoBehaviour
                         if (lifetime >= tickRate)
                         {
                                 lifetime -= tickRate;
-                                if (currentTetro.TryMoveDown()) SignalDropped();
+                                if (currentTetro.TryMoveDown())
+                                {
+                                        SignalDropped();
+                                        state = -1;
+                                }
                         }
 
 
@@ -88,6 +110,7 @@ public class GameController : MonoBehaviour
                                 if (currentTetro.CheckBox())
                                 {
                                         // TODO check that no 'active pieces' in main zone.
+
                                         state = 1;
                                         rotationProgress = 0;
                                 }
@@ -112,13 +135,73 @@ public class GameController : MonoBehaviour
                                         tetro.position = new Vector2(yOffset + 4.5f,
                                             -xOffset + 4.5f);
 
-                                        tetro.rotation -= 90;
+                                        tetro.rotation = 0;
+                                        tetro.transform.eulerAngles = Vector3.forward * 0;
+                                        tetro.RotateRight();
                                 }
                         }
                         RotateRightGrid();
-                        state = 0;      
+                        state = 3;
+                        lifetime = 0;
+                }
+                // Calculating falls
+                if (state == 3) {
+                        lifetime += Time.deltaTime;
+                        if (lifetime > 0.2)
+                        {
+                                lifetime -= 0.2f;
+
+                                if (!DropPieces()) state = -1;
+                        }
+                }
+                // Checking for complete lines
+                if (state == -1) {
+                        bool full;
+                        bool cleared = false;
+                        // Sweep through each line
+                        for (int j = 0; j < 10; j++) {
+                                full = true;
+                                // Check if that line is entirely full
+                                for (int i = 0; i < 10; i++) {
+                                        if (grid[i, j] == null) {
+                                                full = false;
+                                        }
+                                }
+                                if (full) {
+                                        ClearLine(j);
+                                        cleared = true;
+                                }
+                        }
+                        if (cleared)
+                        {
+                                state = 3;
+                                // Check for breaks
+                                // TODO: make this more efficient for when there are many tetros
+                                foreach (TetroControllerParent tetro in tetros) {
+                                        if (tetro.marked)
+                                        {
+                                                tetro.marked = false;
+                                                tetro.CheckBreaks();
+                                        }
+                                }
+                                lifetime = 0;
+                        }
+                        else state = 0;
                 }
                 
+        }
+
+        // Clears the given line
+        private void ClearLine(int line) {
+                for (int i = 0; i < 10; i++)
+                {
+                        grid[i, line].ClearSquare();
+                        grid[i, line] = null;
+                }
+        }
+
+        public void RemoveTetro(TetroControllerParent tetro) {
+                tetros.Remove(tetro);
         }
         // Checks if the given position is open on the grid (0 - open, 1 - taken)
         public int GridCheck(Vector2 position)
@@ -149,16 +232,77 @@ public class GameController : MonoBehaviour
         private void CreateTetro()
         {
                 TetroControllerParent newTetro = Instantiate(tetroPrefab, new Vector2(0.25f, 4.25f), Quaternion.identity).GetComponent<TetroControllerParent>();
+                newTetro.gameController = this;
                 tetros.Add(newTetro);
                 newTetro.state = 1;
                 newTetro.position = new Vector2(5, 18);
-                newTetro.gameController = this;
                 currentTetro = newTetro;
-
+                Vector2[] tempVectors = { Vector2.zero, Vector2.left, Vector2.right, Vector2.up };
+                newTetro.Initiate(tempVectors);
                 // Setting tetro color
                 currentTetro.SetColor(new Color(Random.Range(0.5f, 1), Random.Range(0.5f, 1), Random.Range(0.5f, 1), 1));
         }
+        // Function used to have already placed pieces fall, returns true any pieces fell
+        private bool DropPieces()
+        {
+                // Setting all fall locks
+                foreach (TetroControllerParent tetro in tetros)
+                {
+                        tetro.FallLock = false;
 
+                }
+                // Checking if actually falling
+                bool falling = false;
+
+                // Checking bottom row
+                for (int i = 0; i < 10; i++)
+                {
+                        if (grid[i, 0] != null)
+                        {
+                                grid[i, 0].FallLock();
+                        }
+                }
+                // Checking rows bottom up
+                for (int j = 1; j < 10; j++)
+                {
+                        for (int i = 0; i < 10; i++)
+                        {
+                                if (grid[i, j] != null)
+                                {
+                                        if (grid[i, j - 1] != null && grid[i, j - 1].GetFallLock())
+                                        {
+                                                grid[i, j].FallLock();
+                                        }
+                                }
+                        }
+                }
+                // Clearing each tetro
+                foreach (TetroControllerParent tetro in tetros)
+                {
+                        if (tetro != currentTetro)
+                                tetro.ForceClear();
+
+                }
+                // Shifting all tetros down if they are falling
+                foreach (TetroControllerParent tetro in tetros)
+                {
+                        if (tetro.GetFallLock() == false && tetro != currentTetro)
+                        {
+                                tetro.ForceMoveDown();
+                                falling = true;
+                        }
+                }
+                // Updating positinos of those tetros
+                foreach (TetroControllerParent tetro in tetros)
+                {
+                        if (tetro != currentTetro)
+                                tetro.ForceSet();
+                }
+                return falling;
+        }
+
+
+        // Functino used to rotate the grid right
         private void RotateRight() 
         {
                 rotationProgress += Time.deltaTime * 90;
@@ -166,6 +310,7 @@ public class GameController : MonoBehaviour
                         rotationProgress = 90;
                         state = 2;
                 }
+                // Rotate each tetro
                 foreach (TetroControllerParent tetro in tetros) {
                         if (tetro != currentTetro)
                         {
@@ -184,7 +329,10 @@ public class GameController : MonoBehaviour
                                 tetro.transform.eulerAngles = Vector3.forward * (tetro.rotation - rotationProgress);
                         }
                 }
-                // TODO; update positions at the end
+
+                // Rotate square
+                lowerSquare.transform.eulerAngles = Vector3.forward * (-rotationProgress);
+
         }
 
         // Rotates the bottom 10x10 values in the grid rightward

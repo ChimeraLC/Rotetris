@@ -1,14 +1,18 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Unity.VisualScripting;
 using UnityEngine;
 
 public class TetroControllerParent : MonoBehaviour
 {
         public GameController gameController;
+        public GameObject tetroPrefab;
         public GameObject piecePrefab;
         private List<TetroPieceController> pieces = new List<TetroPieceController>();
         private Color currentColor;
+        public bool FallLock = false;
+        public bool marked;
         public int state
         {
                 get; set;
@@ -26,18 +30,33 @@ public class TetroControllerParent : MonoBehaviour
         // Start is called before the first frame update
         void Start()
         {
-                Vector2[] tempVectors = { Vector2.zero, Vector2.left, Vector2.right, Vector2.up };
-                foreach (Vector2 piecePos in tempVectors) {
-                        TetroPieceController newPiece = Instantiate(piecePrefab, transform.position + (Vector3) piecePos/2,
+
+        }
+
+        // Creates a set of pieces corresponding to the following pieces
+        public void Initiate(Vector2[] pieceVectors)
+        {
+                foreach (Vector2 piecePos in pieceVectors)
+                {
+                        TetroPieceController newPiece = Instantiate(piecePrefab, transform.position + (Vector3)piecePos / 2,
                             Quaternion.identity).GetComponent<TetroPieceController>();
                         newPiece.transform.SetParent(transform);
                         newPiece.gameController = gameController;
                         newPiece.offset = piecePos;
                         newPiece.SetColor(currentColor);
+                        newPiece.parent = this;
                         pieces.Add(newPiece);
                 }
         }
 
+        // Assigns the given pieces to this bject
+        public void SoftInitiate(TetroPieceController[] pieceAdds)
+        {
+                foreach (TetroPieceController piece in pieceAdds)
+                {
+                        pieces.Add(piece);
+                }
+        }
         // Update is called once per frame
         void Update()
         {
@@ -66,6 +85,27 @@ public class TetroControllerParent : MonoBehaviour
                         }
 
                         return true;
+                }
+        }
+        // Moves down ignoring collisions (assumed predetermind), returns true if at the bottom
+        public void ForceMoveDown()
+        {
+                transform.position += new Vector3(0, -0.5f);
+                position += Vector2.down;
+
+        }
+        public void ForceClear()
+        {
+                foreach (TetroPieceController piece in pieces)
+                {
+                        gameController.GridSet(position + piece.offset, null);
+                }
+        }
+        public void ForceSet()
+        {
+                foreach (TetroPieceController piece in pieces)
+                {
+                        gameController.GridSet(position + piece.offset, piece);
                 }
         }
         // Trys to rotate the piece in the given direction (1 -> right, -1 -> left)
@@ -136,6 +176,21 @@ public class TetroControllerParent : MonoBehaviour
                 }
         }
 
+        // Falling lock
+        public bool GetFallLock() {
+                return FallLock;
+        }
+
+        // Removing pieces
+        public void RemoveSquare(TetroPieceController square) {
+                pieces.Remove(square);
+                // Destroy piece if empty
+                if (pieces.Count == 0) {
+                        gameController.RemoveTetro(this);
+                        Destroy(gameObject);
+                }
+        }
+
         // Visual methods
         public void SetColor(Color newColor) {
                 // Set each individual piece.
@@ -145,5 +200,80 @@ public class TetroControllerParent : MonoBehaviour
                 }
                 // Also set any new pieces
                 currentColor = newColor;
+        }
+        // Checks for any potential breaks in the tetris piece, creating new pieces if so
+        public void CheckBreaks() {
+                // First, create a grid representation (everything is offset by 5, 5)
+                TetroPieceController[,] grid = new TetroPieceController[10, 10];
+                int counter = 1;
+                foreach (TetroPieceController piece in pieces)
+                {
+
+                        grid[(int) piece.offset.x + 5, (int) piece.offset.y + 5] = piece;
+                        piece.marker = counter;
+                        counter++;
+                }
+                bool active = true;
+
+                TetroPieceController comparePiece;
+                // Perform a backwards search from each piece towards the main piece
+                // TODO: make this more efficient
+                while (active) {
+                        active = false;
+                        foreach (TetroPieceController piece in pieces)
+                        {
+                                comparePiece = grid[(int)piece.offset.x + 4, (int)piece.offset.y + 5];
+                                if (comparePiece != null && comparePiece.marker < piece.marker) {
+                                        piece.marker = comparePiece.marker;
+                                        active = true;
+                                }
+                                comparePiece = grid[(int)piece.offset.x + 6, (int)piece.offset.y + 5];
+                                if (comparePiece != null && comparePiece.marker < piece.marker)
+                                {
+                                        piece.marker = comparePiece.marker;
+                                        active = true;
+                                }
+                                comparePiece = grid[(int)piece.offset.x + 5, (int)piece.offset.y + 4];
+                                if (comparePiece != null && comparePiece.marker < piece.marker)
+                                {
+                                        piece.marker = comparePiece.marker;
+                                        active = true;
+                                }
+                                comparePiece = grid[(int)piece.offset.x + 5, (int)piece.offset.y + 6];
+                                if (comparePiece != null && comparePiece.marker < piece.marker)
+                                {
+                                        piece.marker = comparePiece.marker;
+                                        active = true;
+                                }
+                        }
+                }
+                int broken = 0;
+                // Check if there needs to be a new tetro
+                foreach (TetroPieceController piece in pieces) {
+                        if (piece.marker != 1) {
+                                broken += 1;
+                        }
+                }
+                if (broken != 0) {
+                        Debug.Log("new");
+                        // Create a new tetro
+                        TetroControllerParent newTetro = Instantiate(tetroPrefab, transform.position, Quaternion.identity).GetComponent<TetroControllerParent>();
+                        newTetro.position = position;
+                        // Add unconnected pieces
+                        TetroPieceController[] offPieces = new TetroPieceController[broken];
+                        counter = 0;
+                        foreach (TetroPieceController piece in pieces.ToArray<TetroPieceController>()) {
+                                if (piece.marker != 1)
+                                {
+                                        RemoveSquare(piece);
+                                        offPieces[counter] = piece;
+                                        counter++;
+                                }
+                        }
+                        newTetro.SoftInitiate(offPieces);
+                        // Recursively check for breaks in the other tetro
+                        newTetro.CheckBreaks();
+                        
+                }
         }
 }

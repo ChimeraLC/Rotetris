@@ -6,6 +6,8 @@ using UnityEngine;
 public class TetroPieceController : MonoBehaviour
 {
         public GameController gameController;
+        public TetroControllerParent parent;
+        public int marker;
         // Used to represent offset of the piece from the center
         public Vector2 offset
         {
@@ -35,4 +37,25 @@ public class TetroPieceController : MonoBehaviour
         public void SetColor(Color newColor) { 
                 GetComponent<SpriteRenderer>().color = newColor;
         }
+
+        // Locks and varifies falling lock status of a tetro piece
+        public void FallLock() {
+                parent.FallLock = true;
+        }
+
+        public bool GetFallLock() {
+                return parent.FallLock;
+        }
+        // Remove this from 
+        public void ClearSquare() {
+                Mark();
+                parent.RemoveSquare(this);
+                Destroy(gameObject);
+        }
+
+        public void Mark() {
+                parent.marked = true;
+        }
+
+
 }
