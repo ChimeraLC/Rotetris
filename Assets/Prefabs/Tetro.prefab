@@ -9,7 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6252260748324557744}
-  - component: {fileID: 4091751884417038657}
+  - component: {fileID: 512264303961701986}
   m_Layer: 0
   m_Name: Tetro
   m_TagString: Untagged
@@ -32,7 +32,7 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &4091751884417038657
+--- !u!114 &512264303961701986
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -41,10 +41,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 6252260748324557747}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 46cafea7fd1953b42a2af44f2191894b, type: 3}
+  m_Script: {fileID: 11500000, guid: f20b6b8379715eb4fb4ada6c8279d9d2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   gameController: {fileID: 0}
-  tetroPrefab: {fileID: 6252260748324557747}
   piecePrefab: {fileID: 2923847804344383142, guid: 21a0f403ed1f7524fbb22b91155170ee, type: 3}
   FallLock: 0
+  marked: 0

@@ -8,10 +8,9 @@ using UnityEngine;
 public class TetroControllerParent : MonoBehaviour
 {
         public GameController gameController;
-        public GameObject tetroPrefab;
         public GameObject piecePrefab;
-        private List<TetroPieceController> pieces = new List<TetroPieceController>();
-        private Color currentColor;
+        protected List<TetroPieceController> pieces = new List<TetroPieceController>();
+        protected Color currentColor;
         public bool FallLock = false;
         public bool marked;
         public int state
@@ -63,14 +62,16 @@ public class TetroControllerParent : MonoBehaviour
         {
         }
         // Trys to move in the given direction
-        public void TryMove(Vector2 direction) {
+        public bool TryMove(Vector2 direction) {
                 if (CheckDirection(direction)) {
                         transform.position += (Vector3) direction / 2;
                         position += direction;
+                        return true;
                 }
+                return false;
         }
         // Specifically moves down, returns true if at the bottom
-        public bool TryMoveDown() {
+        public virtual bool TryMoveDown() {
                 if (CheckDirection(Vector2.down))
                 {
                         transform.position += new Vector3(0, -0.5f);
@@ -134,7 +135,7 @@ public class TetroControllerParent : MonoBehaviour
                 return valid;
         }
         // Checks if the tetris piece can move in the given direction
-        bool CheckDirection(Vector2 direction) {
+        protected bool CheckDirection(Vector2 direction) {
                 bool valid = true;
                 foreach (TetroPieceController piece in pieces) {
                         if (!piece.CheckDirection(direction, position + piece.offset)) {
@@ -143,7 +144,7 @@ public class TetroControllerParent : MonoBehaviour
                 }
                 return valid;
         }
-        bool CheckRotation(Vector2 direction) {
+        protected bool CheckRotation(Vector2 direction) {
                 bool valid = true;
                 foreach (TetroPieceController piece in pieces)
                 {
@@ -160,7 +161,7 @@ public class TetroControllerParent : MonoBehaviour
                 
         }
         // Rotation methods TODO: perform checks
-        public void RotateRight() {
+        public virtual void RotateRight() {
                 foreach (TetroPieceController piece in pieces)
                 {
                         piece.offset = new Vector2(piece.offset.y, -piece.offset.x);
@@ -168,7 +169,7 @@ public class TetroControllerParent : MonoBehaviour
                 }        
         }
 
-        public void RotateLeft()
+        public virtual void RotateLeft()
         {
                 foreach (TetroPieceController piece in pieces)
                 {
@@ -183,13 +184,8 @@ public class TetroControllerParent : MonoBehaviour
         }
 
         // Removing pieces
-        public void RemoveSquare(TetroPieceController square) {
+        public virtual void RemoveSquare(TetroPieceController square) {
                 pieces.Remove(square);
-                // Destroy piece if empty
-                if (pieces.Count == 0) {
-                        gameController.RemoveTetro(this);
-                        Destroy(gameObject);
-                }
         }
 
         // Visual methods
@@ -278,4 +274,5 @@ public class TetroControllerParent : MonoBehaviour
                         newTetro.CheckBreaks();
                 }
         }
+
 }

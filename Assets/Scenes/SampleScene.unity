@@ -168,6 +168,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tetroPrefab: {fileID: 6252260748324557747, guid: 0068b867d2223b24cb6c46bbeeeda5c3, type: 3}
+  tetroGhostPrefab: {fileID: 7956839850968036208, guid: c7d5944e974618445bff977d4cd2cb03, type: 3}
   lowerSquare: {fileID: 8946220662953286805, guid: 0a26e58a6f3137943b44563e7658d32e, type: 3}
 --- !u!1 &519420028
 GameObject:
