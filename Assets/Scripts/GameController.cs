@@ -22,8 +22,10 @@ public class GameController : MonoBehaviour
 
         // Temporary tetris pieces for testing
         public GameObject tetroPrefab;
-        private List<TetroControllerParent> tetros = new List<TetroControllerParent>();
-        private TetroControllerParent currentTetro;
+        public GameObject tetroGhostPrefab;
+        private List<TetroController> tetros = new List<TetroController>();
+        private TetroController currentTetro;
+        private TetroGhostController currentTetroGhost;
 
         // Tetris grid
         TetroPieceController[,] grid = new TetroPieceController[10, 25];
@@ -59,11 +61,15 @@ public class GameController : MonoBehaviour
                         // Horizontal movement
                         if (Input.GetKeyDown(KeyCode.D))
                         {
-                                currentTetro.TryMove(Vector2.right);
+                                if (currentTetro.TryMove(Vector2.right)) {
+                                        currentTetro.CalculateGhost();
+                                }
                         }
                         if (Input.GetKeyDown(KeyCode.A))
                         {
-                                currentTetro.TryMove(Vector2.left);
+                                if (currentTetro.TryMove(Vector2.left)) {
+                                        currentTetro.CalculateGhost();
+                                }
                         }
 
                         // Downward movememt
@@ -139,7 +145,7 @@ public class GameController : MonoBehaviour
                 // TODO: make this look better
                 if (state == 2)
                 {
-                        foreach (TetroControllerParent tetro in tetros)
+                        foreach (TetroController tetro in tetros)
                         {
                                 if (tetro != currentTetro)
                                 {
@@ -161,7 +167,7 @@ public class GameController : MonoBehaviour
                 }
                 if (state == 5)
                 {
-                        foreach (TetroControllerParent tetro in tetros)
+                        foreach (TetroController tetro in tetros)
                         {
                                 if (tetro != currentTetro)
                                 {
@@ -214,7 +220,7 @@ public class GameController : MonoBehaviour
                                 state = 3;
                                 // Check for breaks
                                 // TODO: make this more efficient for when there are many tetros
-                                foreach (TetroControllerParent tetro in tetros.ToArray()) {
+                                foreach (TetroController tetro in tetros.ToArray()) {
                                         if (tetro.marked)
                                         {
                                                 tetro.marked = false;
@@ -237,7 +243,7 @@ public class GameController : MonoBehaviour
                 }
         }
 
-        public void RemoveTetro(TetroControllerParent tetro) {
+        public void RemoveTetro(TetroController tetro) {
                 tetros.Remove(tetro);
         }
         // Checks if the given position is open on the grid (0 - open, 1 - taken)
@@ -268,7 +274,12 @@ public class GameController : MonoBehaviour
         // Creates a tetro piece TODO: make it randomized
         private void CreateTetro()
         {
-                TetroControllerParent newTetro = Instantiate(tetroPrefab, new Vector2(0.25f, 4.25f), Quaternion.identity).GetComponent<TetroControllerParent>();
+                // TODO: Destroy old tetro ghost
+                if (currentTetroGhost != null) {
+                        Destroy(currentTetroGhost.gameObject);
+                }
+                // Creating tetro
+                TetroController newTetro = Instantiate(tetroPrefab, new Vector2(0.25f, 4.25f), Quaternion.identity).GetComponent<TetroController>();
                 newTetro.gameController = this;
                 tetros.Add(newTetro);
                 newTetro.position = new Vector2(5, 18);
@@ -277,9 +288,20 @@ public class GameController : MonoBehaviour
                 newTetro.Initiate(tempVectors);
                 // Setting tetro color
                 currentTetro.SetColor(new Color(Random.Range(0.5f, 1), Random.Range(0.5f, 1), Random.Range(0.5f, 1), 1));
+
+                // Creating tetro ghost
+                TetroGhostController newTetroGhost = Instantiate(tetroGhostPrefab, new Vector2(0.25f, 4.25f), Quaternion.identity).GetComponent<TetroGhostController>();
+                newTetroGhost.gameController = this;
+                newTetroGhost.position = newTetro.position;
+                newTetroGhost.Initiate(tempVectors);
+                newTetroGhost.SetColor(new Color(0, 0, 0, 0.2f));
+
+                currentTetro.tetroGhost = newTetroGhost;
+                currentTetroGhost = newTetroGhost;
+                currentTetro.CalculateGhost();
         }
-        public TetroControllerParent CreateBlankTetro() {
-                TetroControllerParent newTetro = Instantiate(tetroPrefab).GetComponent<TetroControllerParent>();
+        public TetroController CreateBlankTetro() {
+                TetroController newTetro = Instantiate(tetroPrefab).GetComponent<TetroController>();
                 newTetro.gameController = this;
                 tetros.Add(newTetro);
                 return newTetro;
@@ -288,7 +310,7 @@ public class GameController : MonoBehaviour
         private bool DropPieces()
         {
                 // Setting all fall locks
-                foreach (TetroControllerParent tetro in tetros)
+                foreach (TetroController tetro in tetros)
                 {
                         tetro.FallLock = false;
 
@@ -319,14 +341,14 @@ public class GameController : MonoBehaviour
                         }
                 }
                 // Clearing each tetro
-                foreach (TetroControllerParent tetro in tetros)
+                foreach (TetroController tetro in tetros)
                 {
                         if (tetro != currentTetro)
                                 tetro.ForceClear();
 
                 }
                 // Shifting all tetros down if they are falling
-                foreach (TetroControllerParent tetro in tetros)
+                foreach (TetroController tetro in tetros)
                 {
                         if (tetro.GetFallLock() == false && tetro != currentTetro)
                         {
@@ -335,7 +357,7 @@ public class GameController : MonoBehaviour
                         }
                 }
                 // Updating positinos of those tetros
-                foreach (TetroControllerParent tetro in tetros)
+                foreach (TetroController tetro in tetros)
                 {
                         if (tetro != currentTetro)
                                 tetro.ForceSet();
@@ -353,7 +375,7 @@ public class GameController : MonoBehaviour
                         state = 2;
                 }
                 // Rotate each tetro
-                foreach (TetroControllerParent tetro in tetros) {
+                foreach (TetroController tetro in tetros) {
                         if (tetro != currentTetro)
                         {
                                 float xOffset = tetro.position.x - 4.5f;
@@ -387,7 +409,7 @@ public class GameController : MonoBehaviour
                         state = 5;
                 }
                 // Rotate each tetro
-                foreach (TetroControllerParent tetro in tetros)
+                foreach (TetroController tetro in tetros)
                 {
                         if (tetro != currentTetro)
                         {
