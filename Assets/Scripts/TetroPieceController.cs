@@ -7,6 +7,7 @@ public class TetroPieceController : MonoBehaviour
 {
         public GameController gameController;
         public TetroControllerParent parent;
+
         public int marker;
         // Used to represent offset of the piece from the center
         public Vector2 offset

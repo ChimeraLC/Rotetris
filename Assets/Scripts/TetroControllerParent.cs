@@ -13,6 +13,7 @@ public class TetroControllerParent : MonoBehaviour
         protected Color currentColor;
         public bool FallLock = false;
         public bool marked;
+        public float gridSize;
         public int state
         {
                 get; set;
@@ -64,7 +65,7 @@ public class TetroControllerParent : MonoBehaviour
         // Trys to move in the given direction
         public bool TryMove(Vector2 direction) {
                 if (CheckDirection(direction)) {
-                        transform.position += (Vector3) direction / 2;
+                        transform.position += (Vector3) direction * 5 / gridSize;
                         position += direction;
                         return true;
                 }
@@ -74,7 +75,7 @@ public class TetroControllerParent : MonoBehaviour
         public virtual bool TryMoveDown() {
                 if (CheckDirection(Vector2.down))
                 {
-                        transform.position += new Vector3(0, -0.5f);
+                        transform.position += (Vector3) Vector2.down * 5 / gridSize;
                         position += Vector2.down;
                         return false;
                 }
@@ -92,7 +93,7 @@ public class TetroControllerParent : MonoBehaviour
         // Moves down ignoring collisions (assumed predetermind), returns true if at the bottom
         public void ForceMoveDown()
         {
-                transform.position += new Vector3(0, -0.5f);
+                transform.position += (Vector3) Vector2.down * 5 / gridSize;
                 position += Vector2.down;
 
         }
@@ -128,7 +129,7 @@ public class TetroControllerParent : MonoBehaviour
                 bool valid = true;
                 foreach (TetroPieceController piece in pieces) {
                         Vector2 loc = position + piece.offset;
-                        if (loc.x >= 0 && loc.x <= 9 && loc.y >= 0 && loc.y <= 9) {
+                        if (loc.x >= 0 && loc.x <= gridSize - 1 && loc.y >= 0 && loc.y <= gridSize - 1) {
                                 valid = false;
                         }
                 }
@@ -165,7 +166,7 @@ public class TetroControllerParent : MonoBehaviour
                 foreach (TetroPieceController piece in pieces)
                 {
                         piece.offset = new Vector2(piece.offset.y, -piece.offset.x);
-                        piece.transform.position = transform.position + (Vector3) piece.offset / 2;
+                        piece.transform.position = transform.position + (Vector3)piece.offset * 5 / gridSize;
                 }        
         }
 
@@ -174,7 +175,7 @@ public class TetroControllerParent : MonoBehaviour
                 foreach (TetroPieceController piece in pieces)
                 {
                         piece.offset = new Vector2(-piece.offset.y, piece.offset.x);
-                        piece.transform.position = transform.position + (Vector3)piece.offset / 2;
+                        piece.transform.position = transform.position + (Vector3)piece.offset * 5 / gridSize;
                 }
         }
 
@@ -256,6 +257,9 @@ public class TetroControllerParent : MonoBehaviour
                         TetroControllerParent newTetro = gameController.CreateBlankTetro();
                         newTetro.transform.position = transform.position;
                         newTetro.position = position;
+                        newTetro.gridSize = gridSize;
+                        newTetro.gameController = gameController;
+                        newTetro.rotation = rotation;
                         // Add unconnected pieces
                         TetroPieceController[] offPieces = new TetroPieceController[broken];
                         counter = 0;

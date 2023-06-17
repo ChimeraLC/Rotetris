@@ -21,7 +21,7 @@ public class TetroGhostController : TetroControllerParent
         {
                 if (CheckDirection(Vector2.down))
                 {
-                        transform.position += new Vector3(0, -0.5f);
+                        transform.position += (Vector3) Vector2.down * 5 / gridSize;
                         position += Vector2.down;
                         return false;
                 }
