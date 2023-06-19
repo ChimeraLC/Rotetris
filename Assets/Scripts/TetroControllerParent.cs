@@ -35,7 +35,7 @@ public class TetroControllerParent : MonoBehaviour
         }
 
         // Creates a set of pieces corresponding to the following pieces
-        public void Initiate(Vector2[] pieceVectors)
+        public void Initiate(List<Vector2> pieceVectors)
         {
                 foreach (Vector2 piecePos in pieceVectors)
                 {

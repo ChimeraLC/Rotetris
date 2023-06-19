@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.VisualScripting;
+using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UIElements;
 public class GameController : MonoBehaviour
@@ -30,8 +31,9 @@ public class GameController : MonoBehaviour
         private TetroGhostController currentTetroGhost;
 
         // Tetris grid
-        private float gridSize = 4;
+        private float gridSize = 10;
         TetroPieceController[,] grid;
+        private int pieceSize = 6;
 
         // Other UI Elements
         public GameObject lowerSquare;
@@ -39,7 +41,7 @@ public class GameController : MonoBehaviour
         void Start()
         {
                 grid = new TetroPieceController[(int)gridSize, (int)(2 * gridSize + gridSize/2)];
-                CreateTetro();
+                CreateTetro(pieceSize);
                 lowerSquare = Instantiate(lowerSquare, new Vector2(0, -2.5f), Quaternion.identity);
         }
 
@@ -181,6 +183,7 @@ public class GameController : MonoBehaviour
                         RotateRightGrid();
                         state = 3;
                         lifetime = 0;
+                        currentTetro.CalculateGhost();
                 }
                 if (state == 5)
                 {
@@ -201,6 +204,7 @@ public class GameController : MonoBehaviour
                         }
                         RotateLeftGrid();
                         state = 3;
+                        currentTetro.CalculateGhost();
                         lifetime = 0;
                 }
                 // Calculating falls
@@ -286,22 +290,40 @@ public class GameController : MonoBehaviour
         // Signals that the previous tetro has been placed
         public void SignalDropped()
         {
-                CreateTetro();      
+                CreateTetro(pieceSize);      
         }
         // Creates a tetro piece TODO: make it randomized
-        private void CreateTetro()
+        private void CreateTetro(int size)
         {
-                // TODO: Destroy old tetro ghost
+                // Destroy old tetro ghost
                 if (currentTetroGhost != null) {
                         Destroy(currentTetroGhost.gameObject);
                 }
                 // Creating tetro
-                TetroController newTetro = Instantiate(tetroPrefab, new Vector2(5 / gridSize / 2, gridSize/2 * 5 / gridSize + 5/gridSize/2), Quaternion.identity).GetComponent<TetroController>();
+                TetroController newTetro = Instantiate(tetroPrefab, new Vector2(5 / gridSize / 2, gridSize * 5 / gridSize - 10/gridSize + 5/gridSize/2), Quaternion.identity).GetComponent<TetroController>();
                 newTetro.gameController = this;
                 tetros.Add(newTetro);
                 newTetro.position = new Vector2((int) gridSize / 2, gridSize * 2 - 2);
                 currentTetro = newTetro;
-                Vector2[] tempVectors = { Vector2.zero, Vector2.left, Vector2.right, Vector2.up };
+                
+                // Generation of random tetris shapes
+                List<Vector2> tempVectors = new List<Vector2>();
+                HashSet<Vector2> potential = new HashSet<Vector2>();
+                Vector2[] dirs = { Vector2.left, Vector2.right, Vector2.down, Vector2.up };
+                potential.Add(Vector2.zero);
+                for (int i = 0; i < size; i++) {
+                        // Get random element from possible squares
+                        Vector2 current = potential.ElementAt(Random.Range(0, potential.Count - 1));
+                        tempVectors.Add(current);
+                        potential.Remove(current);
+                        // Add all adjacent elements
+                        foreach (Vector2 dir in dirs) {
+                                Vector2 newVec = current + dir;
+                                if (!tempVectors.Contains(newVec)) potential.Add(newVec);
+                        }
+                }
+
+
                 newTetro.Initiate(tempVectors);
                 newTetro.gridSize = gridSize;
                 // Setting tetro color and scale
