@@ -33,7 +33,7 @@ public class GameController : MonoBehaviour
         // Tetris grid
         private float gridSize = 10;
         TetroPieceController[,] grid;
-        private int pieceSize = 6;
+        private int pieceSize = 4;
 
         // Other UI Elements
         public GameObject lowerSquare;
@@ -323,20 +323,21 @@ public class GameController : MonoBehaviour
                         }
                 }
 
-
-                newTetro.Initiate(tempVectors);
-                newTetro.gridSize = gridSize;
                 // Setting tetro color and scale
                 currentTetro.SetColor(new Color(Random.Range(0.5f, 1), Random.Range(0.5f, 1), Random.Range(0.5f, 1), 1));
                 currentTetro.transform.localScale = new Vector2(10 / gridSize, 10 / gridSize);
 
+                newTetro.Initiate(tempVectors);
+                newTetro.gridSize = gridSize;
+                newTetro.Center();
                 // Creating tetro ghost
                 TetroGhostController newTetroGhost = Instantiate(tetroGhostPrefab, new Vector2(0.25f, (gridSize - 1) / 2 - 0.25f), Quaternion.identity).GetComponent<TetroGhostController>();
                 newTetroGhost.gameController = this;
                 newTetroGhost.position = newTetro.position;
                 newTetroGhost.Initiate(tempVectors);
-                newTetroGhost.SetColor(new Color(0, 0, 0, 0.2f));
                 newTetroGhost.gridSize = gridSize;
+                newTetroGhost.Center();
+                newTetroGhost.SetColor(new Color(0, 0, 0, 0.2f));
                 currentTetro.tetroGhost = newTetroGhost;
                 currentTetroGhost = newTetroGhost;
                 currentTetroGhost.transform.localScale = new Vector2(10 / gridSize, 10 / gridSize);

@@ -49,6 +49,25 @@ public class TetroControllerParent : MonoBehaviour
                         pieces.Add(newPiece);
                 }
         }
+        // Realligns the pieces so that its center of mass is generally near its center (fixes wonky pieces)
+        public void Center()
+        {
+                // Calculate average
+                Vector2 offset = Vector2.zero;
+                foreach (TetroPieceController piece in pieces) {
+                        offset += piece.offset;
+                }
+                offset = offset / pieces.Count;
+                // round to an int
+                offset = new Vector2((int)offset.x, (int)offset.y);
+                position += offset;
+                transform.position += (Vector3) offset * 5 / gridSize;
+                foreach (TetroPieceController piece in pieces)
+                {
+                        piece.offset -= offset;
+                        piece.transform.position -= (Vector3)offset * 5 / gridSize;
+                }
+        }
 
         // Assigns the given pieces to this bject
         public void SoftInitiate(TetroPieceController[] pieceAdds)
@@ -115,7 +134,7 @@ public class TetroControllerParent : MonoBehaviour
         public void TryRotation(int direction) {
 
                 if (CheckRotation(new Vector2(-1 * direction, 1 * direction))) {
-                        if (direction == 1)
+                        if (direction == -1)
                         {
                                 RotateRight();
                         }
@@ -274,6 +293,10 @@ public class TetroControllerParent : MonoBehaviour
                                 }
                         }
                         newTetro.SoftInitiate(offPieces);
+
+                        // Recenter the pieces in case of reuse
+                        // newTetro.Center();
+                        // Center();
                         // Recursively check for breaks in the other tetro
                         newTetro.CheckBreaks();
                 }
