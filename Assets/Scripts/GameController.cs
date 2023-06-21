@@ -22,6 +22,7 @@ public class GameController : MonoBehaviour
 
         // Rotation variables
         private float rotationProgress = 0;
+        private int rotationDirection = 1;
 
         // Temporary tetris pieces for testing
         public GameObject tetroPrefab;
@@ -87,11 +88,11 @@ public class GameController : MonoBehaviour
                         // Rotation
                         if (Input.GetKeyDown(KeyCode.E))
                         {
-                                currentTetro.TryRotation(1);
+                                currentTetro.TryRotation(-1);
                         }
                         if (Input.GetKeyDown(KeyCode.Q))
                         {
-                                currentTetro.TryRotation(-1);
+                                currentTetro.TryRotation(1);
                         }
                         // Hard drop
                         if (Input.GetKeyDown(KeyCode.Space)) {
@@ -126,6 +127,9 @@ public class GameController : MonoBehaviour
 
                                         state = 1;
                                         rotationProgress = 0;
+                                        rotationDirection = -1;
+
+                                        currentTetroGhost.Toggle();
 
                                         // Calculate current positions
                                         foreach (TetroController tetro in tetros) {
@@ -139,9 +143,11 @@ public class GameController : MonoBehaviour
                                 if (currentTetro.CheckBox())
                                 {
                                         // TODO check that no 'active pieces' in main zone.
-
-                                        state = 4;
+                                        state = 1;
                                         rotationProgress = 0;
+                                        rotationDirection = 1;
+
+                                        currentTetroGhost.Toggle();
 
                                         // Calculate current positions
                                         foreach (TetroController tetro in tetros)
@@ -154,11 +160,7 @@ public class GameController : MonoBehaviour
                 // TODO: clean up state values
                 if (state == 1)
                 {
-                        RotateRight();
-                }
-                if (state == 4)
-                {
-                        RotateLeft();
+                        Rotate(rotationDirection);
                 }
                 // TODO: make this look better
                 if (state == 2)
@@ -170,41 +172,26 @@ public class GameController : MonoBehaviour
 
                                         // Calculate new position
                                         tetro.transform.position = new Vector2(0, -2.5f) + tetro.magnitude *
-                                            new Vector2(Mathf.Cos((tetro.ang - 90) * Mathf.Deg2Rad),
-                                            Mathf.Sin((tetro.ang - 90) * Mathf.Deg2Rad));
-
-                                        tetro.position = new Vector2(tetro.position.y, -tetro.position.x + (gridSize - 1));
-
-                                        tetro.rotation = 0;
-                                        tetro.transform.eulerAngles = Vector3.forward * 0;
-                                        tetro.RotateRight();
+                                            new Vector2(Mathf.Cos((tetro.ang + rotationDirection * 90) * Mathf.Deg2Rad),
+                                            Mathf.Sin((tetro.ang + rotationDirection * 90) * Mathf.Deg2Rad));
+                                        if (rotationDirection == -1)
+                                        {
+                                                tetro.position = new Vector2(tetro.position.y, -tetro.position.x + (gridSize - 1));
+                                                tetro.rotation = 0;
+                                                tetro.transform.eulerAngles = Vector3.forward * 0;
+                                                tetro.RotateRight();
+                                        }
+                                        else
+                                        {
+                                                tetro.position = new Vector2(-tetro.position.y + (gridSize - 1), tetro.position.x);
+                                                tetro.rotation = 0;
+                                                tetro.transform.eulerAngles = Vector3.forward * 0;
+                                                tetro.RotateLeft();
+                                        }
                                 }
                         }
-                        RotateRightGrid();
+                        RotateGrid(rotationDirection);
                         state = 3;
-                        lifetime = 0;
-                        currentTetro.CalculateGhost();
-                }
-                if (state == 5)
-                {
-                        foreach (TetroController tetro in tetros)
-                        {
-                                if (tetro != currentTetro)
-                                {
-                                        // Calculate new position
-                                        tetro.transform.position = new Vector2(0, -2.5f) + tetro.magnitude *
-                                            new Vector2(Mathf.Cos((tetro.ang + 90) * Mathf.Deg2Rad),
-                                            Mathf.Sin((tetro.ang + 90) * Mathf.Deg2Rad));
-                                        tetro.position = new Vector2(-tetro.position.y + (gridSize - 1), tetro.position.x);
-
-                                        tetro.rotation = 0;
-                                        tetro.transform.eulerAngles = Vector3.forward * 0;
-                                        tetro.RotateLeft();
-                                }
-                        }
-                        RotateLeftGrid();
-                        state = 3;
-                        currentTetro.CalculateGhost();
                         lifetime = 0;
                 }
                 // Calculating falls
@@ -214,7 +201,14 @@ public class GameController : MonoBehaviour
                         {
                                 lifetime -= 0.1f;
 
-                                if (!DropPieces()) state = -1;
+                                if (!DropPieces())
+                                {
+                                        state = -1;
+
+                                        // Reactivate ghost
+                                        currentTetroGhost.Toggle();
+                                        currentTetro.CalculateGhost();
+                                }
                         }
                 }
                 // Checking for complete lines
@@ -343,6 +337,7 @@ public class GameController : MonoBehaviour
                 currentTetroGhost.transform.localScale = new Vector2(10 / gridSize, 10 / gridSize);
                 currentTetro.CalculateGhost();
         }
+        // Creates a tetro piece without initializing it (used for splitting)
         public TetroController CreateBlankTetro() {
                 TetroController newTetro = Instantiate(tetroPrefab).GetComponent<TetroController>();
                 newTetro.gameController = this;
@@ -408,87 +403,38 @@ public class GameController : MonoBehaviour
                 return falling;
         }
 
-
-        // Functino used to rotate the grid right
-        private void RotateRight() 
-        {
-                rotationProgress += Time.deltaTime * 180;
-                if (rotationProgress > 90) {
-                        rotationProgress = 90;
-                        state = 2;
-                }
-                // Rotate each tetro
-                foreach (TetroController tetro in tetros) {
-                        if (tetro != currentTetro)
-                        {
-
-                                // Calculate new position
-                                tetro.transform.position = new Vector2(0, -2.5f) + tetro.magnitude *
-                                    new Vector2(Mathf.Cos((tetro.ang - rotationProgress) * Mathf.Deg2Rad),
-                                    Mathf.Sin((tetro.ang - rotationProgress) * Mathf.Deg2Rad));
-
-                                tetro.transform.eulerAngles = Vector3.forward * (tetro.rotation - rotationProgress);
-                        }
-                }
-
-                // Rotate square
-                lowerSquare.transform.eulerAngles = Vector3.forward * (-rotationProgress);
-
-        }
-
-        // Functino used to rotate the grid right
-        private void RotateLeft()
+        // Function used for both rotations
+        private void Rotate(int rotateDirection)
         {
                 rotationProgress += Time.deltaTime * 180;
                 if (rotationProgress > 90)
                 {
                         rotationProgress = 90;
-                        state = 5;
+                        state = 2;
                 }
                 // Rotate each tetro
                 foreach (TetroController tetro in tetros)
                 {
                         if (tetro != currentTetro)
                         {
-                                
+
                                 // Calculate new position
                                 tetro.transform.position = new Vector2(0, -2.5f) + tetro.magnitude *
-                                    new Vector2(Mathf.Cos((tetro.ang + rotationProgress) * Mathf.Deg2Rad),
-                                    Mathf.Sin((tetro.ang + rotationProgress) * Mathf.Deg2Rad));
+                                    new Vector2(Mathf.Cos((tetro.ang + rotateDirection * rotationProgress) * Mathf.Deg2Rad),
+                                    Mathf.Sin((tetro.ang + rotateDirection * rotationProgress) * Mathf.Deg2Rad));
 
-                                tetro.transform.eulerAngles = Vector3.forward * (tetro.rotation + rotationProgress);
+                                tetro.transform.eulerAngles = Vector3.forward * (tetro.rotation + rotateDirection * rotationProgress);
                         }
                 }
 
                 // Rotate square
-                lowerSquare.transform.eulerAngles = Vector3.forward * (rotationProgress);
+                lowerSquare.transform.eulerAngles = Vector3.forward * (rotateDirection * rotationProgress);
 
         }
-
-        // Rotates the bottom 10x10 values in the grid rightward
-        private void RotateRightGrid()
+        // Rotates the grid in a given direction
+        private void RotateGrid(int rotateDirection)
         {
-                TetroPieceController[,] tempGrid = new TetroPieceController[(int) gridSize, (int) gridSize];
-                // Find the rotated grid
-                for (int i = 0; i < gridSize; i++) {
-                        for (int j = 0; j < gridSize; j++) {
-                                float xOffset = i - (gridSize - 1) / 2;
-                                float yOffset = j - (gridSize - 1) / 2;
-                                tempGrid[(int)(yOffset + (gridSize - 1) / 2), (int)(-xOffset + (gridSize - 1) / 2)] = grid[i, j];
-                        }
-                }
-                // Copy these new values over
-                for (int i = 0; i < gridSize; i++) {
-                        for (int j = 0; j < gridSize; j++) {
-                                grid[i, j] = tempGrid[i, j];
-                        }
-                }
-        }
-
-        // Rotates the bottom 10x10 values in the grid leftward
-        private void RotateLeftGrid()
-        {
-                TetroPieceController[,] tempGrid = new TetroPieceController[10, 10];
+                TetroPieceController[,] tempGrid = new TetroPieceController[(int)gridSize, (int)gridSize];
                 // Find the rotated grid
                 for (int i = 0; i < gridSize; i++)
                 {
@@ -496,7 +442,7 @@ public class GameController : MonoBehaviour
                         {
                                 float xOffset = i - (gridSize - 1) / 2;
                                 float yOffset = j - (gridSize - 1) / 2;
-                                tempGrid[(int)(-yOffset + (gridSize - 1) / 2), (int)(xOffset + (gridSize - 1) / 2)] = grid[i, j];
+                                tempGrid[(int)(- rotationDirection * yOffset + (gridSize - 1) / 2), (int)(rotationDirection * xOffset + (gridSize - 1) / 2)] = grid[i, j];
                         }
                 }
                 // Copy these new values over

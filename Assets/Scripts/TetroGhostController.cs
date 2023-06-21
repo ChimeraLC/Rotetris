@@ -28,4 +28,9 @@ public class TetroGhostController : TetroControllerParent
                 // Reached the bottom TODO: add some leeway here
                 return true;
         }
+        // Toggles the visibility of the ghost
+        public void Toggle()
+        {
+                gameObject.SetActive(!gameObject.activeSelf);
+        }
 }
