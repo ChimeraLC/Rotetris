@@ -4,6 +4,7 @@ using System.Linq;
 using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
+using static UnityEditor.Experimental.AssetDatabaseExperimental.AssetDatabaseCounters;
 
 public class TetroControllerParent : MonoBehaviour
 {
@@ -14,6 +15,7 @@ public class TetroControllerParent : MonoBehaviour
         public bool FallLock = false;
         public bool marked;
         public float gridSize;
+        public List<Vector2> vectors;
         public int state
         {
                 get; set;
@@ -37,6 +39,7 @@ public class TetroControllerParent : MonoBehaviour
         // Creates a set of pieces corresponding to the following pieces
         public void Initiate(List<Vector2> pieceVectors)
         {
+                vectors = pieceVectors;
                 foreach (Vector2 piecePos in pieceVectors)
                 {
                         TetroPieceController newPiece = Instantiate(piecePrefab, transform.position + (Vector3)piecePos / 2,
@@ -220,6 +223,9 @@ public class TetroControllerParent : MonoBehaviour
                 }
                 return valid;
         }
+        public bool CantMoveDown() {
+                return !CheckDirection(Vector2.down);
+        }
         // Checks if the tetris piece can move in the given direction
         protected bool CheckDirection(Vector2 direction) {
                 bool valid = true;
@@ -292,15 +298,23 @@ public class TetroControllerParent : MonoBehaviour
                 // Also set any new pieces
                 currentColor = newColor;
         }
+        public void SetAlpha(float alpha) {
+                currentColor.a = alpha;
+                foreach (TetroPieceController piece in pieces)
+                {
+                        piece.SetColor(currentColor);
+                }
+
+        }
         // Checks for any potential breaks in the tetris piece, creating new pieces if so
         public void CheckBreaks() {
                 // First, create a grid representation (everything is offset by 5, 5)
-                TetroPieceController[,] grid = new TetroPieceController[10, 10];
+                TetroPieceController[,] grid = new TetroPieceController[(int)gridSize * 2, (int) gridSize * 2];
                 int counter = 1;
                 foreach (TetroPieceController piece in pieces)
                 {
 
-                        grid[(int) piece.offset.x + 5, (int) piece.offset.y + 5] = piece;
+                        grid[(int) piece.offset.x + (int)gridSize, (int) piece.offset.y + (int)gridSize] = piece;
                         piece.marker = counter;
                         counter++;
                 }
@@ -311,26 +325,27 @@ public class TetroControllerParent : MonoBehaviour
                 // TODO: make this more efficient
                 while (active) {
                         active = false;
+                        // Add a potential piece and have a list of all potential pieces that could be added to shape
                         foreach (TetroPieceController piece in pieces)
                         {
-                                comparePiece = grid[(int)piece.offset.x + 4, (int)piece.offset.y + 5];
+                                comparePiece = grid[(int)piece.offset.x + (int)gridSize - 1, (int)piece.offset.y + (int)gridSize];
                                 if (comparePiece != null && comparePiece.marker < piece.marker) {
                                         piece.marker = comparePiece.marker;
                                         active = true;
                                 }
-                                comparePiece = grid[(int)piece.offset.x + 6, (int)piece.offset.y + 5];
+                                comparePiece = grid[(int)piece.offset.x + (int)gridSize + 1, (int)piece.offset.y + (int)gridSize];
                                 if (comparePiece != null && comparePiece.marker < piece.marker)
                                 {
                                         piece.marker = comparePiece.marker;
                                         active = true;
                                 }
-                                comparePiece = grid[(int)piece.offset.x + 5, (int)piece.offset.y + 4];
+                                comparePiece = grid[(int)piece.offset.x + (int)gridSize, (int)piece.offset.y + (int)gridSize - 1];
                                 if (comparePiece != null && comparePiece.marker < piece.marker)
                                 {
                                         piece.marker = comparePiece.marker;
                                         active = true;
                                 }
-                                comparePiece = grid[(int)piece.offset.x + 5, (int)piece.offset.y + 6];
+                                comparePiece = grid[(int)piece.offset.x + (int)gridSize, (int)piece.offset.y + (int)gridSize + 1];
                                 if (comparePiece != null && comparePiece.marker < piece.marker)
                                 {
                                         piece.marker = comparePiece.marker;
@@ -375,5 +390,64 @@ public class TetroControllerParent : MonoBehaviour
                         newTetro.CheckBreaks();
                 }
         }
+        // Slice the piece along a vertical line
+        public void Slice(int cutPosition)
+        {
+                int broken = 0;
+                foreach (TetroPieceController piece in pieces)
+                {
+                        if (position.x + piece.offset.x < cutPosition) {
+                                broken++;
+                        }
+                }
+                // If the slice cut the shape
+                if (broken != 0 && broken != pieces.Count) {
+                        // Create a new tetro
+                        TetroControllerParent newTetro = gameController.CreateBlankTetro();
+                        newTetro.transform.position = transform.position;
+                        newTetro.position = position;
+                        newTetro.gridSize = gridSize;
+                        newTetro.gameController = gameController;
+                        newTetro.rotation = rotation;
 
+
+                        // Add unconnected pieces
+                        TetroPieceController[] offPieces = new TetroPieceController[broken];
+                        int counter = 0;
+
+                        foreach (TetroPieceController piece in pieces.ToArray<TetroPieceController>())
+                        {
+                                if (position.x + piece.offset.x < cutPosition)
+                                {
+                                        RemoveSquare(piece);
+                                        piece.transform.parent = newTetro.transform;
+                                        piece.parent = newTetro;
+                                        offPieces[counter] = piece;
+                                        counter++;
+                                }
+                        }
+
+
+                        newTetro.SoftInitiate(offPieces);
+
+                        // Check for any further breaks
+                        newTetro.CheckBreaks();
+                        CheckBreaks();
+                }
+        }
+        // Make sure the piece is initially inside the area
+        public void Centralize() {
+                float furthestRight = 0;
+                float furthestLeft = 0;
+                // Finding furthest left and right
+                foreach (TetroPieceController piece in pieces)
+                {
+                        if (piece.offset.x > furthestRight) furthestRight = piece.offset.x;
+                        if (piece.offset.x < furthestLeft) furthestLeft = piece.offset.x;
+                }
+
+                // Moving to center TODO: fix this
+                if (position.x + furthestLeft < 0) TryMove(Vector2.right * (-furthestLeft - position.x));
+                if (position.x + furthestRight > gridSize - 1) TryMove(Vector2.left * (position.x + furthestRight - gridSize + 1));
+        }
 }

@@ -45,6 +45,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   gameController: {fileID: 0}
-  piecePrefab: {fileID: 2923847804344383142, guid: 21a0f403ed1f7524fbb22b91155170ee, type: 3}
+  piecePrefab: {fileID: 2923847804344383142, guid: 109ef3662d873964d8edfba69782f358, type: 3}
   FallLock: 0
   marked: 0
+  gridSize: 0
+  vectors: []
