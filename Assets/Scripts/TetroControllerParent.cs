@@ -82,7 +82,7 @@ public class TetroControllerParent : MonoBehaviour
         {
         }
         // Trys to move in the given direction
-        public bool TryMove(Vector2 direction) {
+        public virtual bool TryMove(Vector2 direction) {
                 if (CheckDirection(direction)) {
                         transform.position += (Vector3) direction * 5 / gridSize;
                         position += direction;
@@ -98,16 +98,7 @@ public class TetroControllerParent : MonoBehaviour
                         position += Vector2.down;
                         return false;
                 }
-                // Reached the bottom TODO: add some leeway here
-                else
-                {
-                        foreach (TetroPieceController piece in pieces)
-                        {
-                                gameController.GridSet(position + piece.offset, piece);
-                        }
-
-                        return true;
-                }
+                return true;
         }
         // Moves down ignoring collisions (assumed predetermind), returns true if at the bottom
         public void ForceMoveDown()
@@ -131,17 +122,92 @@ public class TetroControllerParent : MonoBehaviour
                 }
         }
         // Trys to rotate the piece in the given direction (1 -> right, -1 -> left)
-        public void TryRotation(int direction) {
+        public virtual void TryRotation(int direction) {
 
-                if (CheckRotation(new Vector2(-1 * direction, 1 * direction))) {
+                // What side it connected on
+                if (CheckRotation(new Vector2(-1 * direction, 1 * direction)))
+                {
                         if (direction == -1)
                         {
                                 RotateRight();
                         }
-                        else {
+                        else
+                        {
                                 RotateLeft();
                         }
                 }
+                else
+                {
+                        // Check rotations with offsets
+                        RotationTest(direction);
+                }
+                
+        }
+        private void RotationTest(int direction)
+        {
+                // Find boundary pieces
+                TetroPieceController furthestRight = pieces.FirstOrDefault();
+                TetroPieceController furthestLeft = pieces.FirstOrDefault();
+                TetroPieceController furthestDown = pieces.FirstOrDefault();
+                foreach (TetroPieceController piece in pieces)
+                {
+                        if (direction * piece.offset.y < direction * furthestRight.offset.y)
+                        {
+                                furthestRight = piece;
+                        }
+                        if (direction * piece.offset.y > direction * furthestLeft.offset.y)
+                        {
+                                furthestLeft = piece;
+                        }
+                        if (direction * piece.offset.x < direction * furthestDown.offset.x)
+                        {
+                                furthestDown = piece;
+                        }
+                }
+                // Check right side
+                for (float off = 1; off <= direction * furthestLeft.offset.y; off++)
+                {
+                        if (CheckRotationOffset(direction, Vector2.right * off))
+                        {
+                                Rotate(direction);
+                                TryMove(Vector2.right * off);
+                                return;
+                        }
+                }
+                // Check left side
+                for (float off = -1; off >= direction * furthestRight.offset.y; off--)
+                {
+                        if (CheckRotationOffset(direction, Vector2.right * off))
+                        {
+                                Rotate(direction);
+                                TryMove(Vector2.right * off);
+                                return;
+                        }
+                }
+                // Check bottom
+                for (float off = -1; off >= direction * furthestDown.offset.x; off--)
+                {
+                        if (CheckRotationOffset(direction, Vector2.down * off))
+                        {
+                                Rotate(direction);
+                                TryMove(Vector2.down * off);
+                                return;
+                        }
+                }
+        }
+        // Sees if a rotation can be complete with a slight movement.
+        private bool CheckRotationOffset(int direction, Vector2 offset)
+        {
+                bool valid = true;
+                foreach (TetroPieceController piece in pieces)
+                {
+                        if (!piece.CheckRotation(position + offset + 
+                            new Vector2(piece.offset.y * -1 * direction, piece.offset.x * direction)))
+                        {
+                                valid = false;
+                        }
+                }
+                return valid;
         }
         // Checks that the given piece is not within the 10x10 rotation grid
         public bool CheckBox() {
@@ -181,6 +247,14 @@ public class TetroControllerParent : MonoBehaviour
                 
         }
         // Rotation methods TODO: perform checks
+        public virtual void Rotate(int direction)
+        {
+                foreach (TetroPieceController piece in pieces)
+                {
+                        piece.offset = new Vector2(-direction * piece.offset.y, direction * piece.offset.x);
+                        piece.transform.position = transform.position + (Vector3)piece.offset * 5 / gridSize;
+                }
+        }
         public virtual void RotateRight() {
                 foreach (TetroPieceController piece in pieces)
                 {

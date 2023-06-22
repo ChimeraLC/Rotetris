@@ -10,7 +10,7 @@ public class GameController : MonoBehaviour
         // Natural fall tickrate
         private float tickRate = 1f;
         private float lifetime = 0f;
-
+        private float horizontalLifetime = 0f;
         // TODO: fix the failure condition, state is unsafe
         private bool active = true;
         // Held button tickrate
@@ -24,7 +24,7 @@ public class GameController : MonoBehaviour
         private float rotationProgress = 0;
         private int rotationDirection = 1;
 
-        // Temporary tetris pieces for testing
+        // Tetris pieces
         public GameObject tetroPrefab;
         public GameObject tetroGhostPrefab;
         private List<TetroController> tetros = new List<TetroController>();
@@ -34,7 +34,7 @@ public class GameController : MonoBehaviour
         // Tetris grid
         private float gridSize = 10;
         TetroPieceController[,] grid;
-        private int pieceSize = 4;
+        private int pieceSize = 9;
 
         // Other UI Elements
         public GameObject lowerSquare;
@@ -68,23 +68,60 @@ public class GameController : MonoBehaviour
                         // Horizontal movement
                         if (Input.GetKeyDown(KeyCode.D))
                         {
-                                if (currentTetro.TryMove(Vector2.right)) {
-                                        currentTetro.CalculateGhost();
+                                currentTetro.TryMove(Vector2.right);
+                                horizontalLifetime = 0;
+                        }
+                        if (Input.GetKey(KeyCode.D))
+                        {
+                                horizontalLifetime += Time.deltaTime;
+                                if (horizontalLifetime > 0.3) {
+                                        horizontalLifetime -= 0.1f;
+
+                                        currentTetro.TryMove(Vector2.right);
                                 }
                         }
                         if (Input.GetKeyDown(KeyCode.A))
                         {
-                                if (currentTetro.TryMove(Vector2.left)) {
-                                        currentTetro.CalculateGhost();
+                                currentTetro.TryMove(Vector2.left);
+                                horizontalLifetime = 0;
+                        }
+                        if (Input.GetKey(KeyCode.A))
+                        {
+                                horizontalLifetime += Time.deltaTime;
+                                if (horizontalLifetime > 0.3)
+                                {
+                                        horizontalLifetime -= 0.1f;
+
+                                        currentTetro.TryMove(Vector2.left);
                                 }
                         }
-
                         // Downward movememt
                         if (Input.GetKeyDown(KeyCode.S))
                         {
-                                if (currentTetro.TryMoveDown()) SignalDropped();
+                                if (currentTetro.TryMoveDown())
+                                {
+                                        // TODO; there might be an exploit by constantly reseeting lifetime?
+                                        //SignalDropped();
+                                        //state = -1;
+                                }
+                                else {
+                                        lifetime = 0; // reset natural dropping timer
+                                }
                         }
+                        if (Input.GetKey(KeyCode.S))
+                        {
+                                lifetime += Time.deltaTime;
+                                if (lifetime > 0.3)
+                                {
+                                        lifetime -= 0.1f;
 
+                                        if (currentTetro.TryMoveDown())
+                                        {
+                                                //SignalDropped();
+                                                //state = -1;
+                                        }
+                                }
+                        }
                         // Rotation
                         if (Input.GetKeyDown(KeyCode.E))
                         {
@@ -100,6 +137,7 @@ public class GameController : MonoBehaviour
                                         // Skip
                                 }
                                 lifetime = 0;
+                                currentTetro.ForceSet();
                                 SignalDropped();
                                 state = -1;
                         }
@@ -111,6 +149,7 @@ public class GameController : MonoBehaviour
                                 lifetime -= tickRate;
                                 if (currentTetro.TryMoveDown())
                                 {
+                                        currentTetro.ForceSet();
                                         SignalDropped();
                                         state = -1;
                                 }
@@ -129,7 +168,7 @@ public class GameController : MonoBehaviour
                                         rotationProgress = 0;
                                         rotationDirection = -1;
 
-                                        currentTetroGhost.Toggle();
+                                        currentTetroGhost.ToggleOff();
 
                                         // Calculate current positions
                                         foreach (TetroController tetro in tetros) {
@@ -147,7 +186,7 @@ public class GameController : MonoBehaviour
                                         rotationProgress = 0;
                                         rotationDirection = 1;
 
-                                        currentTetroGhost.Toggle();
+                                        currentTetroGhost.ToggleOff();
 
                                         // Calculate current positions
                                         foreach (TetroController tetro in tetros)
@@ -206,7 +245,7 @@ public class GameController : MonoBehaviour
                                         state = -1;
 
                                         // Reactivate ghost
-                                        currentTetroGhost.Toggle();
+                                        currentTetroGhost.ToggleOn();
                                         currentTetro.CalculateGhost();
                                 }
                         }

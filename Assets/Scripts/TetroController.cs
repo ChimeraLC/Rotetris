@@ -43,7 +43,22 @@ public class TetroController : TetroControllerParent
                         
                 }
         }
-
+        public override bool TryMove(Vector2 direction)
+        {
+                bool res = base.TryMove(direction);
+                CalculateGhost();
+                return res;
+        }
+        public override void Rotate(int direction)
+        {
+                base.Rotate(direction);
+                if (tetroGhost != null)
+                {
+                        tetroGhost.Rotate(direction);
+                        // TODO: might not be needed
+                        CalculateGhost();
+                }
+        }
         // Overrides on rotation
         public override void RotateRight()
         {
