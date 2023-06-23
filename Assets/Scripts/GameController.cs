@@ -35,6 +35,9 @@ public class GameController : MonoBehaviour
         private TetroGhostController currentTetroGhost;
         private TetroController nextTetro;
         private TetroGhostController nextTetroGhost;
+        private TetroController savedTetro;
+        private TetroGhostController savedTetroGhost;
+        private bool canSwap = true;
 
         // Tetris grid
         private float gridSize = 8;
@@ -258,9 +261,44 @@ public class GameController : MonoBehaviour
                                                 }
                                         }
                                 }
+                                // Swapping current piece
+                                if (Input.GetKeyDown(KeyCode.C))
+                                {
+                                        // The first time it happens
+                                        if (savedTetro == null)
+                                        {
+                                                savedTetro = currentTetro;
+                                                savedTetroGhost = currentTetroGhost;
+                                                // TODO: make only placed tetros includced
+                                                tetros.Remove(currentTetro);
+                                                currentTetro.transform.position = new Vector3(-nextPos.x, nextPos.y);
+                                                currentTetroGhost.transform.position = currentTetro.transform.position;
+                                                SignalDropped(false);
+                                                canSwap = false;
+                                        }
+                                        else {
+                                                if (canSwap)
+                                                {
+                                                        // Swap references
+                                                        TetroController temp = savedTetro;
+                                                        savedTetro = currentTetro;
+                                                        currentTetro = temp;
+                                                        TetroGhostController temp2 = savedTetroGhost;
+                                                        savedTetroGhost = currentTetroGhost;
+                                                        currentTetroGhost = temp2;
+                                                        // Move to new positions
+                                                        savedTetro.transform.position = new Vector3(-nextPos.x, nextPos.y);
+                                                        savedTetroGhost.transform.position = savedTetro.transform.position;
+
+                                                        currentTetro.position = new Vector2((int)gridSize / 2, gridSize * 2 - 2);
+                                                        currentTetro.transform.position = new Vector3(5 / gridSize / 2, gridSize * 5 / gridSize - 10 / gridSize + 5 / gridSize / 2);
+                                                        currentTetro.CalculateGhost();
+                                                }
+                                        }
+                                }
 
                                 // Vertical slice
-                                if (Input.GetKeyDown(KeyCode.G))
+                                if (Input.GetKeyDown(KeyCode.G) && 1 == 2)
                                 {
                                         state = 4;
                                         sliceController.Toggle(true);
@@ -450,13 +488,15 @@ public class GameController : MonoBehaviour
                 }
         }
         // Signals that the previous tetro has been placed
-        public void SignalDropped()
+        public void SignalDropped(bool destroyGhost = true)
         {
+                // Update markers
                 cantMoveDown = false;
                 leeway = 0;
+                canSwap = true;
 
                 // Destroy old tetro ghost
-                if (currentTetroGhost != null)
+                if (currentTetroGhost != null && destroyGhost)
                 {
                         Destroy(currentTetroGhost.gameObject);
                 }
@@ -464,7 +504,6 @@ public class GameController : MonoBehaviour
                 currentTetroGhost = nextTetroGhost;
                 tetros.Add(currentTetro);
                 currentTetro.transform.position += new Vector3(5 / gridSize / 2 - nextPos.x, gridSize * 5 / gridSize - 10 / gridSize + 5 / gridSize / 2 - nextPos.y);
-                // TODO: in case too large, move left or right
                 currentTetro.Centralize();
                 currentTetro.CalculateGhost();
 
@@ -481,12 +520,25 @@ public class GameController : MonoBehaviour
                 TetroController newTetro = Instantiate(tetroPrefab, nextPos, Quaternion.identity).GetComponent<TetroController>();
                 // Setting variables
                 newTetro.gameController = this;
+
+                // Swapping current piece
+                if (Input.GetKeyDown(KeyCode.C))
+                {
+                        // The first time it happens
+                        if (savedTetro == null)
+                        {
+                                savedTetro = currentTetro;
+                                savedTetroGhost = currentTetroGhost;
+                                currentTetro.transform.position = new Vector3(-nextPos.x, nextPos.y);
+                                currentTetroGhost.transform.position = currentTetro.transform.position;
+                                SignalDropped();
+                        }
+                }
+
                 newTetro.position = new Vector2((int)gridSize / 2, gridSize * 2 - 2);
                 newTetro.gridSize = gridSize;
                 // Setting tetro color and scale
                 newTetro.SetColor(new Color(Random.Range(0.5f, 1), Random.Range(0.5f, 1), Random.Range(0.5f, 1), 1));
-
-
                 newTetro.Initiate(tempVectors);
                 newTetro.transform.localScale = new Vector2(10 / gridSize, 10 / gridSize);
                 newTetro.Center();
