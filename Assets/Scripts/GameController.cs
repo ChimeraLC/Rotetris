@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using Unity.VisualScripting;
-using UnityEditor.Experimental.GraphView;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UIElements;
 public class GameController : MonoBehaviour
 {
@@ -37,7 +37,10 @@ public class GameController : MonoBehaviour
         private TetroGhostController nextTetroGhost;
         private TetroController savedTetro;
         private TetroGhostController savedTetroGhost;
+
+        // Tracking repeated usage
         private bool canSwap = true;
+        private bool canRotate = true;
 
         // Tetris grid
         private float gridSize = 8;
@@ -47,6 +50,7 @@ public class GameController : MonoBehaviour
         // Other UI Elements
         public GameObject lowerSquare;
         public TextMeshProUGUI gameOver;
+        public TextMeshProUGUI restart;
         private Vector2 nextPos = new Vector2(5.5f, 2.5f);
 
         // Slicer
@@ -60,11 +64,11 @@ public class GameController : MonoBehaviour
                 sliceController.Toggle(false);
                 sliceController.gridSize = gridSize;
                 gameOver.enabled = false;
+                restart.enabled = false;
 
                 // Creating first tetro
                 CreateTetro(pieceSize);
                 currentTetro = nextTetro;
-                tetros.Add(currentTetro);
                 currentTetroGhost = nextTetroGhost;
                 currentTetro.transform.position += new Vector3(5 / gridSize / 2 - nextPos.x, gridSize * 5 / gridSize - 10 / gridSize + 5 / gridSize / 2 - nextPos.y);
                 currentTetro.Centralize();
@@ -97,13 +101,13 @@ public class GameController : MonoBehaviour
                         if (state == 0)
                         {
                                 // Horizontal movement
-                                if (Input.GetKeyDown(KeyCode.D))
+                                if (Input.GetKeyDown(KeyCode.RightArrow))
                                 {
                                         currentTetro.TryMove(Vector2.right);
                                         cantMoveDown = currentTetro.CantMoveDown();
                                         horizontalLifetime = 0;
                                 }
-                                if (Input.GetKey(KeyCode.D))
+                                if (Input.GetKey(KeyCode.RightArrow))
                                 {
                                         horizontalLifetime += Time.deltaTime;
                                         if (horizontalLifetime > 0.3)
@@ -114,13 +118,13 @@ public class GameController : MonoBehaviour
                                                 cantMoveDown = currentTetro.CantMoveDown();
                                         }
                                 }
-                                if (Input.GetKeyDown(KeyCode.A))
+                                if (Input.GetKeyDown(KeyCode.LeftArrow))
                                 {
                                         currentTetro.TryMove(Vector2.left);
                                         cantMoveDown = currentTetro.CantMoveDown();
                                         horizontalLifetime = 0;
                                 }
-                                if (Input.GetKey(KeyCode.A))
+                                if (Input.GetKey(KeyCode.LeftArrow))
                                 {
                                         horizontalLifetime += Time.deltaTime;
                                         if (horizontalLifetime > 0.3)
@@ -132,7 +136,7 @@ public class GameController : MonoBehaviour
                                         }
                                 }
                                 // Downward movememt
-                                if (Input.GetKeyDown(KeyCode.S))
+                                if (Input.GetKeyDown(KeyCode.DownArrow))
                                 {
                                         if (currentTetro.TryMoveDown())
                                         {
@@ -148,7 +152,7 @@ public class GameController : MonoBehaviour
                                                 cantMoveDown = currentTetro.CantMoveDown();
                                         }
                                 }
-                                if (Input.GetKey(KeyCode.S))
+                                if (Input.GetKey(KeyCode.DownArrow))
                                 {
                                         lifetime += Time.deltaTime;
                                         if (lifetime > 0.3)
@@ -169,12 +173,12 @@ public class GameController : MonoBehaviour
                                         }
                                 }
                                 // Rotation
-                                if (Input.GetKeyDown(KeyCode.E))
+                                if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.X))
                                 {
                                         currentTetro.TryRotation(-1);
                                         cantMoveDown = currentTetro.CantMoveDown();
                                 }
-                                if (Input.GetKeyDown(KeyCode.Q))
+                                if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.LeftControl) | Input.GetKeyDown(KeyCode.RightControl))
                                 {
                                         currentTetro.TryRotation(1);
                                         cantMoveDown = currentTetro.CantMoveDown();
@@ -188,6 +192,7 @@ public class GameController : MonoBehaviour
                                         }
                                         lifetime = 0;
                                         currentTetro.ForceSet();
+                                        tetros.Add(currentTetro);
                                         SignalDropped();
                                         state = -1;
                                 }
@@ -216,16 +221,18 @@ public class GameController : MonoBehaviour
                                         if (leeway > tickRate)
                                         {
                                                 currentTetro.ForceSet();
+                                                tetros.Add(currentTetro);
                                                 SignalDropped();
                                                 state = -1;
                                         }
                                 }
 
                                 // Rotation testing code
-                                if (Input.GetKeyDown(KeyCode.R))
+                                if (Input.GetKeyDown(KeyCode.S) && canRotate)
                                 {
                                         if (currentTetro.CheckBox())
                                         {
+                                                canRotate = false;
                                                 // TODO check that no 'active pieces' in main zone.
                                                 // TODO: make prediction invisible
 
@@ -243,10 +250,11 @@ public class GameController : MonoBehaviour
                                         }
                                 }
                                 // Rotation testing code
-                                if (Input.GetKeyDown(KeyCode.F))
+                                if (Input.GetKeyDown(KeyCode.A) && canRotate)
                                 {
                                         if (currentTetro.CheckBox())
                                         {
+                                                canRotate = false;
                                                 // TODO check that no 'active pieces' in main zone.
                                                 state = 1;
                                                 rotationProgress = 0;
@@ -262,15 +270,13 @@ public class GameController : MonoBehaviour
                                         }
                                 }
                                 // Swapping current piece
-                                if (Input.GetKeyDown(KeyCode.C))
+                                if (Input.GetKeyDown(KeyCode.C) || Input.GetKeyDown(KeyCode.LeftShift) || Input.GetKeyDown(KeyCode.RightShift))
                                 {
                                         // The first time it happens
                                         if (savedTetro == null)
                                         {
                                                 savedTetro = currentTetro;
                                                 savedTetroGhost = currentTetroGhost;
-                                                // TODO: make only placed tetros includced
-                                                tetros.Remove(currentTetro);
                                                 currentTetro.transform.position = new Vector3(-nextPos.x, nextPos.y);
                                                 currentTetroGhost.transform.position = currentTetro.transform.position;
                                                 SignalDropped(false);
@@ -279,6 +285,8 @@ public class GameController : MonoBehaviour
                                         else {
                                                 if (canSwap)
                                                 {
+                                                        // Can't repeatedly swap
+                                                        canSwap = false;
                                                         // Swap references
                                                         TetroController temp = savedTetro;
                                                         savedTetro = currentTetro;
@@ -315,27 +323,23 @@ public class GameController : MonoBehaviour
                         {
                                 foreach (TetroController tetro in tetros)
                                 {
-                                        if (tetro != currentTetro)
+                                        // Calculate new position
+                                        tetro.transform.position = new Vector2(0, -2.5f) + tetro.magnitude *
+                                                new Vector2(Mathf.Cos((tetro.ang + rotationDirection * 90) * Mathf.Deg2Rad),
+                                                Mathf.Sin((tetro.ang + rotationDirection * 90) * Mathf.Deg2Rad));
+                                        if (rotationDirection == -1)
                                         {
-
-                                                // Calculate new position
-                                                tetro.transform.position = new Vector2(0, -2.5f) + tetro.magnitude *
-                                                    new Vector2(Mathf.Cos((tetro.ang + rotationDirection * 90) * Mathf.Deg2Rad),
-                                                    Mathf.Sin((tetro.ang + rotationDirection * 90) * Mathf.Deg2Rad));
-                                                if (rotationDirection == -1)
-                                                {
-                                                        tetro.position = new Vector2(tetro.position.y, -tetro.position.x + (gridSize - 1));
-                                                        tetro.rotation = 0;
-                                                        tetro.transform.eulerAngles = Vector3.forward * 0;
-                                                        tetro.RotateRight();
-                                                }
-                                                else
-                                                {
-                                                        tetro.position = new Vector2(-tetro.position.y + (gridSize - 1), tetro.position.x);
-                                                        tetro.rotation = 0;
-                                                        tetro.transform.eulerAngles = Vector3.forward * 0;
-                                                        tetro.RotateLeft();
-                                                }
+                                                tetro.position = new Vector2(tetro.position.y, -tetro.position.x + (gridSize - 1));
+                                                tetro.rotation = 0;
+                                                tetro.transform.eulerAngles = Vector3.forward * 0;
+                                                tetro.RotateRight();
+                                        }
+                                        else
+                                        {
+                                                tetro.position = new Vector2(-tetro.position.y + (gridSize - 1), tetro.position.x);
+                                                tetro.rotation = 0;
+                                                tetro.transform.eulerAngles = Vector3.forward * 0;
+                                                tetro.RotateLeft();
                                         }
                                 }
                                 RotateGrid(rotationDirection);
@@ -399,8 +403,7 @@ public class GameController : MonoBehaviour
                                         // Slice all tetros
                                         foreach (TetroController tetro in tetros.ToArray())
                                         {
-                                                if (tetro != currentTetro)
-                                                        tetro.Slice(sliceController.position);
+                                                tetro.Slice(sliceController.position);
                                         }
                                         sliceController.Toggle(false);
                                         // Check for falling
@@ -452,6 +455,10 @@ public class GameController : MonoBehaviour
                 else
                 {
                         gameOver.enabled = true;
+                        restart.enabled = true;
+                        if (Input.GetKeyDown(KeyCode.R)) {
+                                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+                        }
                 }
         }
 
@@ -494,6 +501,7 @@ public class GameController : MonoBehaviour
                 cantMoveDown = false;
                 leeway = 0;
                 canSwap = true;
+                canRotate = true;
 
                 // Destroy old tetro ghost
                 if (currentTetroGhost != null && destroyGhost)
@@ -502,7 +510,6 @@ public class GameController : MonoBehaviour
                 }
                 currentTetro = nextTetro;
                 currentTetroGhost = nextTetroGhost;
-                tetros.Add(currentTetro);
                 currentTetro.transform.position += new Vector3(5 / gridSize / 2 - nextPos.x, gridSize * 5 / gridSize - 10 / gridSize + 5 / gridSize / 2 - nextPos.y);
                 currentTetro.Centralize();
                 currentTetro.CalculateGhost();
@@ -520,21 +527,6 @@ public class GameController : MonoBehaviour
                 TetroController newTetro = Instantiate(tetroPrefab, nextPos, Quaternion.identity).GetComponent<TetroController>();
                 // Setting variables
                 newTetro.gameController = this;
-
-                // Swapping current piece
-                if (Input.GetKeyDown(KeyCode.C))
-                {
-                        // The first time it happens
-                        if (savedTetro == null)
-                        {
-                                savedTetro = currentTetro;
-                                savedTetroGhost = currentTetroGhost;
-                                currentTetro.transform.position = new Vector3(-nextPos.x, nextPos.y);
-                                currentTetroGhost.transform.position = currentTetro.transform.position;
-                                SignalDropped();
-                        }
-                }
-
                 newTetro.position = new Vector2((int)gridSize / 2, gridSize * 2 - 2);
                 newTetro.gridSize = gridSize;
                 // Setting tetro color and scale
@@ -659,14 +651,13 @@ public class GameController : MonoBehaviour
                 // Clearing each tetro
                 foreach (TetroController tetro in tetros)
                 {
-                        if (tetro != currentTetro)
-                                tetro.ForceClear();
+                        tetro.ForceClear();
 
                 }
                 // Shifting all tetros down if they are falling
                 foreach (TetroController tetro in tetros)
                 {
-                        if (tetro.GetFallLock() == false && tetro != currentTetro)
+                        if (tetro.GetFallLock() == false)
                         {
                                 tetro.ForceMoveDown();
                                 falling = true;
@@ -675,8 +666,7 @@ public class GameController : MonoBehaviour
                 // Updating positinos of those tetros
                 foreach (TetroController tetro in tetros)
                 {
-                        if (tetro != currentTetro)
-                                tetro.ForceSet();
+                        tetro.ForceSet();
                 }
                 return falling;
         }
@@ -693,16 +683,12 @@ public class GameController : MonoBehaviour
                 // Rotate each tetro
                 foreach (TetroController tetro in tetros)
                 {
-                        if (tetro != currentTetro)
-                        {
+                        // Calculate new position
+                        tetro.transform.position = new Vector2(0, -2.5f) + tetro.magnitude *
+                                new Vector2(Mathf.Cos((tetro.ang + rotateDirection * rotationProgress) * Mathf.Deg2Rad),
+                                Mathf.Sin((tetro.ang + rotateDirection * rotationProgress) * Mathf.Deg2Rad));
 
-                                // Calculate new position
-                                tetro.transform.position = new Vector2(0, -2.5f) + tetro.magnitude *
-                                    new Vector2(Mathf.Cos((tetro.ang + rotateDirection * rotationProgress) * Mathf.Deg2Rad),
-                                    Mathf.Sin((tetro.ang + rotateDirection * rotationProgress) * Mathf.Deg2Rad));
-
-                                tetro.transform.eulerAngles = Vector3.forward * (tetro.rotation + rotateDirection * rotationProgress);
-                        }
+                        tetro.transform.eulerAngles = Vector3.forward * (tetro.rotation + rotateDirection * rotationProgress);
                 }
 
                 // Rotate square

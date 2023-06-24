@@ -4,7 +4,6 @@ using System.Linq;
 using Unity.VisualScripting;
 using UnityEditor;
 using UnityEngine;
-using static UnityEditor.Experimental.AssetDatabaseExperimental.AssetDatabaseCounters;
 
 public class TetroControllerParent : MonoBehaviour
 {
@@ -16,6 +15,7 @@ public class TetroControllerParent : MonoBehaviour
         public bool marked;
         public float gridSize;
         public List<Vector2> vectors;
+        public Vector2 offset;
         public int state
         {
                 get; set;
@@ -56,7 +56,7 @@ public class TetroControllerParent : MonoBehaviour
         public void Center()
         {
                 // Calculate average
-                Vector2 offset = Vector2.zero;
+                offset = Vector2.zero;
                 foreach (TetroPieceController piece in pieces) {
                         offset += piece.offset;
                 }
